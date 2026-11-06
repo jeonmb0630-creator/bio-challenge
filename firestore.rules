@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn() { return request.auth != null; }
+  // 이 UID를 관리자 계정의 Firebase Authentication UID로 교체하세요.
+  function isAdmin() { return signedIn() && request.auth.uid == 'REPLACE_WITH_ADMIN_UID'; }
+  match /leaderboard/{uid} {
+   allow read: if true;
+   allow create: if signedIn() && request.auth.uid == uid
+     && request.resource.data.keys().hasOnly(['uid','nickname','score','updatedAt'])
+     && request.resource.data.uid == uid
+     && request.resource.data.nickname is string && request.resource.data.nickname.size() <= 24
+     && request.resource.data.score is int && request.resource.data.score >= 0 && request.resource.data.score <= 20000;
+   allow update: if signedIn() && request.auth.uid == uid
+     && request.resource.data.keys().hasOnly(['uid','nickname','score','updatedAt'])
+     && request.resource.data.uid == uid
+     && request.resource.data.nickname is string && request.resource.data.nickname.size() <= 24
+     && request.resource.data.score is int && request.resource.data.score > resource.data.score && request.resource.data.score <= 20000;
+   allow delete: if false;
+  }
+  match /attempts/{attemptId} {
+   allow create: if signedIn() && request.resource.data.keys().hasOnly(['uid','nickname','score','answers','createdAt'])
+     && request.resource.data.uid == request.auth.uid
+     && request.resource.data.nickname is string && request.resource.data.nickname.size() <= 24
+     && request.resource.data.score is int && request.resource.data.score >= 0 && request.resource.data.score <= 20000
+     && request.resource.data.answers is list && request.resource.data.answers.size() == 20;
+   allow read: if isAdmin();
+   allow update, delete: if false;
+  }
+ }
+}
